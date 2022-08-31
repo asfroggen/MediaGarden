@@ -1,6 +1,7 @@
 package com.esaudev.mediagarden.di
 
 import android.content.Context
+import com.esaudev.mediagarden.data.remote.MusicDataSource
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.SimpleExoPlayer
@@ -20,6 +21,10 @@ import dagger.hilt.android.scopes.ServiceScoped
 @Module
 @InstallIn(ServiceComponent::class)
 object ServiceModule {
+
+    @ServiceScoped
+    @Provides
+    fun provideMusicDataSource() = MusicDataSource()
 
     @ServiceScoped
     @Provides

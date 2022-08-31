@@ -3,6 +3,8 @@ package com.esaudev.mediagarden.exoplayer
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
@@ -115,9 +117,15 @@ class MusicService: MediaBrowserServiceCompat() {
         playNow: Boolean
     ) {
         val curSongIndex = if (curPlayingSong == null) 0 else songs.indexOf(itemToPlay)
-        exoPlayer.prepare(firebaseMusicSource.asMediaSource(dataSourceFactory))
-        exoPlayer.seekTo(curSongIndex, 0)
-        exoPlayer.playWhenReady = playNow
+
+        val mainThreadHandler = Handler(Looper.getMainLooper())
+        mainThreadHandler.post {
+            exoPlayer.setMediaSource(firebaseMusicSource.asMediaSource(dataSourceFactory))
+            exoPlayer.prepare()
+            exoPlayer.seekTo(curSongIndex, 0)
+            exoPlayer.playWhenReady = playNow
+        }
+
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {

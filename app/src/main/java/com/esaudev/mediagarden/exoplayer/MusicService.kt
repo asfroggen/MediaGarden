@@ -27,7 +27,7 @@ import javax.inject.Inject
 private const val SERVICE_TAG = "Music Service"
 
 @AndroidEntryPoint
-class MusicService: MediaBrowserServiceCompat() {
+class MusicService : MediaBrowserServiceCompat() {
 
     @Inject
     lateinit var dataSourceFactory: DefaultDataSource.Factory
@@ -51,6 +51,7 @@ class MusicService: MediaBrowserServiceCompat() {
     private var curPlayingSong: MediaMetadataCompat? = null
 
     private var isPlayerInitialized = false
+
     private lateinit var musicPlayerEventListener: MusicPlayerEventListener
 
     companion object {
@@ -60,7 +61,6 @@ class MusicService: MediaBrowserServiceCompat() {
 
     override fun onCreate() {
         super.onCreate()
-
         serviceScope.launch {
             firebaseMusicSource.fetchMediaData()
         }
@@ -79,11 +79,11 @@ class MusicService: MediaBrowserServiceCompat() {
         musicNotificationManager = MusicNotificationManager(
             this,
             mediaSession.sessionToken,
-            MusicPlayerNotificationListener(this)
-        ) {
-            // When current song changes
-            curSongDuration = exoPlayer.duration
-        }
+            MusicPlayerNotificationListener(this),
+            newSongCallback = {
+                curSongDuration = exoPlayer.duration
+            }
+        )
 
         val musicPlaybackPreparer = MusicPlaybackPreparer(firebaseMusicSource) {
             curPlayingSong = it
@@ -100,12 +100,11 @@ class MusicService: MediaBrowserServiceCompat() {
         mediaSessionConnector.setPlayer(exoPlayer)
 
         musicPlayerEventListener = MusicPlayerEventListener(this)
-
         exoPlayer.addListener(musicPlayerEventListener)
         musicNotificationManager.showNotification(exoPlayer)
     }
 
-    private inner class MusicQueueNavigator: TimelineQueueNavigator(mediaSession) {
+    private inner class MusicQueueNavigator : TimelineQueueNavigator(mediaSession) {
         override fun getMediaDescription(player: Player, windowIndex: Int): MediaDescriptionCompat {
             return firebaseMusicSource.songs[windowIndex].description
         }
@@ -116,7 +115,7 @@ class MusicService: MediaBrowserServiceCompat() {
         itemToPlay: MediaMetadataCompat?,
         playNow: Boolean
     ) {
-        val curSongIndex = if (curPlayingSong == null) 0 else songs.indexOf(itemToPlay)
+        val curSongIndex = if(curPlayingSong == null) 0 else songs.indexOf(itemToPlay)
 
         val mainThreadHandler = Handler(Looper.getMainLooper())
         mainThreadHandler.post {
@@ -125,7 +124,6 @@ class MusicService: MediaBrowserServiceCompat() {
             exoPlayer.seekTo(curSongIndex, 0)
             exoPlayer.playWhenReady = playNow
         }
-
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -156,23 +154,21 @@ class MusicService: MediaBrowserServiceCompat() {
         when(parentId) {
             MEDIA_ROOT_ID -> {
                 val resultsSent = firebaseMusicSource.whenReady { isInitialized ->
-                    if (isInitialized) {
+                    if(isInitialized) {
                         result.sendResult(firebaseMusicSource.asMediaItems())
-                        if (!isPlayerInitialized && firebaseMusicSource.songs.isNotEmpty() ) {
+                        if(!isPlayerInitialized && firebaseMusicSource.songs.isNotEmpty()) {
                             preparePlayer(firebaseMusicSource.songs, firebaseMusicSource.songs[0], false)
                             isPlayerInitialized = true
                         }
                     } else {
                         mediaSession.sendSessionEvent(NETWORK_ERROR, null)
-                        result.sendResult(null) // Error case
+                        result.sendResult(null)
                     }
                 }
-
-                if (!resultsSent) {
+                if(!resultsSent) {
                     result.detach()
                 }
             }
         }
     }
-
 }
